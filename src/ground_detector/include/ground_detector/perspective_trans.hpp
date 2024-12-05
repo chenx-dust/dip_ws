@@ -13,6 +13,8 @@ public:
 
     cv::Mat transform(const cv::Mat& cv_image, bool show_result = false);
 
+    cv::Point2f transform(const cv::Point2f point);
+
     void pauseOrResumeSelect();
 
     void loadConfig(const std::string& config_path);

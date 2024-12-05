@@ -124,18 +124,18 @@ void GlobalMap::updateMap(const nav_msgs::OccupancyGrid& local_map, const geomet
         last_transform_ = tf2::Transform(rotation_matrix, translation * config_.resolution) * last_transform_;
     }
 
-    cv::Mat border_draw;
-    cv::cvtColor(border_, border_draw, cv::COLOR_GRAY2BGR);
-    cv::circle(border_draw, cv::Point2f(tf2_transform.getOrigin().x() / config_.resolution, tf2_transform.getOrigin().y() / config_.resolution) + config_.origin,
-        10, cv::Scalar(0, 0, 255), -1);
-    // flip to make origin at the bottom left
-    cv::flip(border_draw, border_draw, 0);
-    cv::imshow("border_draw", border_draw);
+    // cv::Mat border_draw;
+    // cv::cvtColor(border_, border_draw, cv::COLOR_GRAY2BGR);
+    // cv::circle(border_draw, cv::Point2f(tf2_transform.getOrigin().x() / config_.resolution, tf2_transform.getOrigin().y() / config_.resolution) + config_.origin,
+    //     10, cv::Scalar(0, 0, 255), -1);
+    // // flip to make origin at the bottom left
+    // cv::flip(border_draw, border_draw, 0);
+    // cv::imshow("border_draw", border_draw);
 
-    cv::Mat road_draw = road_.clone();
-    // cv::cvtColor(road_, road_draw, cv::COLOR_GRAY2BGR);
-    cv::flip(road_draw, road_draw, 0);
-    cv::imshow("road_draw", road_draw);
+    // cv::Mat road_draw = road_.clone();
+    // // cv::cvtColor(road_, road_draw, cv::COLOR_GRAY2BGR);
+    // cv::flip(road_draw, road_draw, 0);
+    // cv::imshow("road_draw", road_draw);
 }
 
 tf2::Transform GlobalMap::getTransform() const

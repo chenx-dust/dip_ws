@@ -61,6 +61,17 @@ cv::Mat PerspectiveTrans::transform(const cv::Mat& cv_image, bool show_result)
     return result;
 }
 
+cv::Point2f PerspectiveTrans::transform(const cv::Point2f point)
+{
+    cv::Point2f result;
+    cv::Mat point_mat(1, 1, CV_64FC2);
+    point_mat.at<cv::Vec2d>(0, 0) = cv::Vec2d(point.x, point.y);
+    cv::perspectiveTransform(point_mat, point_mat, perspective_matrix_);
+    result.x = point_mat.at<cv::Vec2d>(0, 0)[0];
+    result.y = point_mat.at<cv::Vec2d>(0, 0)[1];
+    return result;
+}
+
 void PerspectiveTrans::pauseOrResumeSelect()
 {
     paused_ = !paused_;

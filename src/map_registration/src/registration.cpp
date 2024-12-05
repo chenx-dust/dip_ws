@@ -17,7 +17,7 @@ cv::Mat registration(const cv::Mat& src, const cv::Mat& dst)
     auto parameter_object = elastix::ParameterObject::New();
     auto parameter_map = elastix::ParameterObject::GetDefaultParameterMap("rigid");
     // parameter_map["MaximumNumberOfIterations"] = { "360" };
-    parameter_map["NumberOfResolutions"] = { "3" };
+    // parameter_map["NumberOfResolutions"] = { "3" };
     parameter_map["MovingImagePyramid"] = { "OpenCLMovingGenericImagePyramid" };
     parameter_map["Resampler"] = { "OpenCLResampler" };
     parameter_object->AddParameterMap(parameter_map);

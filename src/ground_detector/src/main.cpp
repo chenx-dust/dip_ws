@@ -104,8 +104,15 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
 
     cv::Mat red_mask = red_detection.getRedMask(rectified_image);
 
+    cv::Point2f buttom_point(rectified_image.cols / 2, rectified_image.rows - 1);
+    cv::Point2f seed_point = perspective_trans.transform(buttom_point);
+    if (seed_point.y < 0 || seed_point.y >= perspective_trans.getConfig().image_size.height ||
+        seed_point.x < 0 || seed_point.x >= perspective_trans.getConfig().image_size.width) {
+        seed_point = cv::Point2f(perspective_trans.getConfig().image_size.width / 2, perspective_trans.getConfig().image_size.height - 1);
+    }
+
     cv::Mat transformed_red_mask = perspective_trans.transform(255 - red_mask);
-    cv::Mat road_mask = roadExtract(255 - transformed_red_mask);
+    cv::Mat road_mask = roadExtract(255 - transformed_red_mask, seed_point);
     cv::Mat border_mask = borderExtract(road_mask, perspective_trans.getPerspectiveMatrix(), rectified_image.size());
 
     int key = cv::waitKey(1);
