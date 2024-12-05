@@ -10,7 +10,7 @@ GlobalMap::GlobalMap(const MapConfig& config)
 {
 }
 
-tf2::Transform GlobalMap::updateMap(const nav_msgs::OccupancyGrid& local_map, const geometry_msgs::TransformStamped& transform)
+void GlobalMap::updateMap(const nav_msgs::OccupancyGrid& local_map, const geometry_msgs::TransformStamped& transform)
 {
     cv::Mat local_map_mat = cv::Mat(local_map.info.height, local_map.info.width, CV_8UC1);
     std::copy(local_map.data.begin(), local_map.data.end(), local_map_mat.data);
@@ -37,23 +37,29 @@ tf2::Transform GlobalMap::updateMap(const nav_msgs::OccupancyGrid& local_map, co
         tf2_transform.getBasis()[1][0], tf2_transform.getBasis()[1][1],
             (tf2_transform.getOrigin().y() + transformed_origin[1]) / config_.resolution + config_.origin.y);
 
+    cv::Mat last_registration_ = (cv::Mat_<double>(2, 3) << 
+        last_transform_.getBasis()[0][0], last_transform_.getBasis()[0][1],
+            last_transform_.getOrigin().x() / config_.resolution,
+        last_transform_.getBasis()[1][0], last_transform_.getBasis()[1][1],
+            last_transform_.getOrigin().y() / config_.resolution);
+
+    std::cout << "last mat: " << last_registration_ << std::endl;
+
     // Apply the affine transformation to the local map
     cv::Mat transformed_road;
     cv::warpAffine(road, transformed_road, transform_mat, config_.size, cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(0));
+    cv::warpAffine(transformed_road, transformed_road, last_registration_, config_.size, cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(0));
     cv::threshold(transformed_road, transformed_road, 127, 255, cv::THRESH_BINARY);
 
     cv::Mat transformed_border;
     cv::warpAffine(border, transformed_border, transform_mat, config_.size, cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(0));
+    cv::warpAffine(transformed_border, transformed_border, last_registration_, config_.size, cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(0));
     cv::threshold(transformed_border, transformed_border, 127, 255, cv::THRESH_BINARY);
 
     // Update the global map with the transformed local map
-    cv::Mat now_registration = cv::Mat::zeros(config_.size, CV_8UC1);
-    now_registration.setTo(cv::Scalar(255), transformed_border);
-    now_registration.setTo(cv::Scalar(50), transformed_road);
     if (border_.empty()) {
         border_ = transformed_border;
         road_ = transformed_road;
-        registration_ = now_registration;
     } else {
         // cv::Mat old_border_gauss, new_border_gauss;
         // cv::GaussianBlur(border_, old_border_gauss, cv::Size(7, 7), 1);
@@ -64,7 +70,9 @@ tf2::Transform GlobalMap::updateMap(const nav_msgs::OccupancyGrid& local_map, co
         // auto map = mapper.calculate(new_border_gauss, old_border_gauss);
 
         cv::Mat warped_border, warped_road;
-        cv::Mat result = registration(transformed_border, border_);
+        cv::Mat result = registration(border_, transformed_border);
+
+        std::cout << "new mat: " << result << std::endl;
         // map->warp(transformed_border, warped_border);
         // map->warp(transformed_road, warped_road);
 
@@ -88,26 +96,26 @@ tf2::Transform GlobalMap::updateMap(const nav_msgs::OccupancyGrid& local_map, co
         // warped_registration.copyTo(registration_, warped_registration != 0);
 
         cv::Mat registration_show;
-        cv::cvtColor(registration_, registration_show, cv::COLOR_GRAY2BGR);
+
+        cv::Mat now_registration = cv::Mat::zeros(config_.size, CV_8UC1);
+        now_registration.setTo(cv::Scalar(50), road_);
+        now_registration.setTo(cv::Scalar(255), border_);
+        cv::cvtColor(now_registration, registration_show, cv::COLOR_GRAY2BGR);
         registration_show.setTo(cv::Scalar(0, 255, 255), warped_border);
         registration_show.setTo(cv::Scalar(0, 0, 255), transformed_border);
         cv::flip(registration_show, registration_show, 0);
         cv::imshow("registration_show", registration_show);
-        // border_ += warped_border;
+        border_.setTo(cv::Scalar(0), warped_road);
+        border_ += warped_border;
         road_ += warped_road;
 
-        // tf2
-        cv::Vec2f y_axis(result.at<float>(0, 1), result.at<float>(1, 1));
-        // std::cout << y_axis << std::endl;
-        y_axis /= cv::norm(y_axis);
-        tf2::Matrix3x3 rotation_matrix
-        {
-            y_axis[1], y_axis[0], 0,
-            -y_axis[0], y_axis[1], 0,
-            0, 0, 1
-        };
-        tf2::Transform new_transform(tf2::Matrix3x3(rotation_matrix), tf2::Vector3(result.at<float>(0, 2), result.at<float>(1, 2), 0) * config_.resolution);
-        transform_ = new_transform * transform_;
+        last_registration_ = result;
+
+        tf2::Matrix3x3 rotation_matrix(result.at<double>(0, 0), result.at<double>(0, 1), 0,
+            result.at<double>(1, 0), result.at<double>(0, 0), 0,
+            0, 0, 1);
+        tf2::Vector3 translation(result.at<double>(0, 2), result.at<double>(1, 2), 0);
+        last_transform_ = tf2::Transform(rotation_matrix, translation * config_.resolution) * last_transform_;
     }
 
     cv::Mat border_draw;
@@ -122,6 +130,24 @@ tf2::Transform GlobalMap::updateMap(const nav_msgs::OccupancyGrid& local_map, co
     // cv::cvtColor(road_, road_draw, cv::COLOR_GRAY2BGR);
     cv::flip(road_draw, road_draw, 0);
     cv::imshow("road_draw", road_draw);
+}
 
-    return transform_.inverse();
+tf2::Transform GlobalMap::getTransform() const
+{
+    return last_transform_;
+}
+
+const cv::Mat& GlobalMap::getBorder() const
+{
+    return border_;
+}
+
+const cv::Mat& GlobalMap::getRoad() const
+{
+    return road_;
+}
+
+cv::Point2f GlobalMap::getOrigin() const
+{
+    return config_.origin;
 }

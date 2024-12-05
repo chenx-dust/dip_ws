@@ -93,7 +93,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
         return;
     }
 
-    cv::imshow("Raw", cv_ptr->image);
+    // cv::imshow("Raw", cv_ptr->image);
 
     cv::Mat rectified_image;
     model.rectifyImage(cv_ptr->image, rectified_image);

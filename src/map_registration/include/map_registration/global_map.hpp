@@ -17,13 +17,20 @@ public:
 
     GlobalMap(const MapConfig& config);
 
-    tf2::Transform updateMap(const nav_msgs::OccupancyGrid& local_map, const geometry_msgs::TransformStamped& transform);
+    void updateMap(const nav_msgs::OccupancyGrid& local_map, const geometry_msgs::TransformStamped& transform);
+
+    tf2::Transform getTransform() const;
+
+    const cv::Mat& getBorder() const;
+    const cv::Mat& getRoad() const;
+    cv::Point2f getOrigin() const;
 private:
     MapConfig config_;
-    cv::Mat registration_;
     cv::Mat border_;
     cv::Mat road_;
-    tf2::Transform transform_ = tf2::Transform::getIdentity();
+
+    // cv::Mat last_registration_ = cv::Mat::eye(2, 3, CV_32F);
+    tf2::Transform last_transform_ = tf2::Transform::getIdentity();
     int count_ = 0;
 };
 }

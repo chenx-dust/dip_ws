@@ -77,58 +77,7 @@ cv::Mat ground_detector::borderExtract(const cv::Mat& cv_image, const cv::Mat& p
             perspective_draw.at<cv::Vec3b>(perspective_pos) = cv::Vec3b(0, 0, 255);
         }
     }
-    cv::imshow("Perspective Draw", perspective_draw);
-    cv::imshow("Border Mask", border_mask);
+    // cv::imshow("Perspective Draw", perspective_draw);
+    // cv::imshow("Border Mask", border_mask);
     return border_mask;
 }
-
-// cv::Mat borderExtract(const cv::Mat& cv_image, cv::Point2f origin_point)
-// {
-//     cv::Mat polar_image;
-//     int r_res = cv_image.rows - origin_point.y;
-//     cv::warpPolar(cv_image, polar_image, cv::Size(0, 0), origin_point, r_res, cv::INTER_LINEAR);
-
-//     cv::Mat grad_x, grad_y;
-//     cv::Sobel(cv_image, grad_x, CV_16S, 1, 0);
-//     cv::Sobel(cv_image, grad_y, CV_16S, 0, 1);
-//     cv::Mat abs_grad_x, abs_grad_y;
-
-//     cv::Mat polar_draw;
-//     if (cv_image.channels() == 1) {
-//         cv::cvtColor(polar_image, polar_draw, cv::COLOR_GRAY2BGR);
-//     } else {
-//         polar_draw = polar_image.clone();
-//     }
-//     cv::Mat border_mask = cv::Mat::zeros(cv_image.rows, cv_image.cols, CV_8UC1);
-//     for (int i = 0; i < cv_image.rows; i++) {
-//         for (int j = 0; j < cv_image.cols; j++) {
-//             if (grad_x.at<int16_t>(i, j) != 0 || grad_y.at<int16_t>(i, j) != 0) {
-//                 // border_mask.at<uchar>(i, j) = 255;
-//                 cv::Point2f vector = cv::Point2f(j, i) - origin_point;
-//                 cv::Point2i polar_pos(
-//                     cvRound(cv::norm(vector)),
-//                     cvRound(std::atan2(vector.y, vector.x) * r_res / 2)
-//                 );
-//                 // cv::circle(polar_draw, polar_pos, 2, cv::Scalar(0, 0, 255), -1);
-//                 // border_mask.at<uchar>(i, j) = 255;
-//                 // bool is_border = true;
-//                 // for (int k = polar_pos.x + 1; k < polar_image.cols; k++) {
-//                 //     polar_draw.at<cv::Vec3b>(polar_pos.y, k) = cv::Vec3b(0, 255, 0);
-//                 //     if (polar_image.at<uchar>(polar_pos.y, k) == 0) {
-//                 //         is_border = false;
-//                 //         polar_draw.at<cv::Vec3b>(polar_pos.y, k) = cv::Vec3b(255, 255, 0);
-//                 //         break;
-//                 //     }
-//                 // }
-//                 // if (is_border) {
-//                 if (polar_image.at<uchar>(polar_pos.y, polar_pos.x + 1) == 255) {
-//                     polar_draw.at<cv::Vec3b>(polar_pos) = cv::Vec3b(0, 0, 255);
-//                     border_mask.at<uchar>(i, j) = 255;
-//                 }
-//             }
-//         }
-//     }
-//     cv::imshow("Polar Draw", polar_draw);
-//     cv::imshow("Border Mask", border_mask);
-//     return border_mask;
-// }
