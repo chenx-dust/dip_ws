@@ -3,6 +3,8 @@
   <!-- Define the bag_file argument with default empty string -->
   <arg name="bag_file" default=""/>
 
+  <param name="use_sim_time" value="true"/>
+
   <!-- Play rosbag -->
   <node pkg="rosbag" type="play" name="player" output="screen" args="$(arg bag_file) --clock --quiet">
   </node>

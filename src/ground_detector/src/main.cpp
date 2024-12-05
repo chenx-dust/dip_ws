@@ -7,6 +7,8 @@
 #include <camera_info_manager/camera_info_manager.h>
 #include <image_geometry/pinhole_camera_model.h>
 #include <nav_msgs/OccupancyGrid.h>
+#include <sensor_msgs/PointCloud2.h>
+#include <sensor_msgs/point_cloud2_iterator.h>
 
 using namespace ground_detector;
 
@@ -16,6 +18,7 @@ std::shared_ptr<camera_info_manager::CameraInfoManager> camera_info;
 image_geometry::PinholeCameraModel model;
 
 ros::Publisher map_pub;
+ros::Publisher pc_pub;
 
 void mouseCallback(int event, int x, int y, int flags, void* userdata)
 {
@@ -27,31 +30,57 @@ void mouseCallback(int event, int x, int y, int flags, void* userdata)
 
 void publishMap(ros::Time stamp, const cv::Mat& road_mask, const cv::Mat& border_mask, cv::Point2f origin_point)
 {
-    nav_msgs::OccupancyGrid msg;
-    msg.header.stamp = stamp;
-    msg.header.frame_id = "base_footprint";
-    msg.info.resolution = 0.01;
-    msg.info.width = road_mask.cols;
-    msg.info.height = road_mask.rows;
-    msg.info.origin.position.x = -origin_point.y / 100.;
-    msg.info.origin.position.y = -origin_point.x / 100.;
-    msg.info.origin.position.z = 0;
-    msg.info.origin.orientation.x = 0;
-    msg.info.origin.orientation.y = 0;
-    msg.info.origin.orientation.z = 0;
-    msg.info.origin.orientation.w = 1;
-    msg.data.resize(road_mask.cols * road_mask.rows);
+    nav_msgs::OccupancyGrid map_msg;
+    map_msg.header.stamp = stamp;
+    map_msg.header.frame_id = "base_footprint";
+    map_msg.info.resolution = 0.01;
+    map_msg.info.width = road_mask.cols;
+    map_msg.info.height = road_mask.rows;
+    map_msg.info.origin.position.x = -origin_point.y / 100.;
+    map_msg.info.origin.position.y = -origin_point.x / 100.;
+    map_msg.info.origin.position.z = 0;
+    map_msg.info.origin.orientation.x = 0;
+    map_msg.info.origin.orientation.y = 0;
+    map_msg.info.origin.orientation.z = 0;
+    map_msg.info.origin.orientation.w = 1;
+    map_msg.data.resize(road_mask.cols * road_mask.rows);
+
+    std::vector<cv::Point3f> pc_points;
+
     for (int i = 0; i < road_mask.rows; i++) {
         for (int j = 0; j < road_mask.cols; j++) {
-            size_t index = msg.data.size() - (j * road_mask.cols + i);
+            size_t index = map_msg.data.size() - (j * road_mask.cols + i);
             if (border_mask.at<uchar>(i, j) == 255) {
-                msg.data[index] = 100;
+                map_msg.data[index] = 100;
+                pc_points.emplace_back(
+                    (road_mask.rows - i - 1 - origin_point.y) * 0.01,
+                    (road_mask.cols - j - 1 - origin_point.x) * 0.01,
+                    0);
             } else {
-                msg.data[index] = 255 - road_mask.at<uchar>(i, j);
+                map_msg.data[index] = 255 - road_mask.at<uchar>(i, j);
             }
         }
     }
-    map_pub.publish(msg);
+    map_pub.publish(map_msg);
+
+    sensor_msgs::PointCloud2 pc_msg;
+    pc_msg.header.stamp = stamp;
+    pc_msg.header.frame_id = "base_footprint";
+    sensor_msgs::PointCloud2Modifier modifier(pc_msg);
+    modifier.setPointCloud2FieldsByString(1, "xyz");
+    modifier.resize(pc_points.size());
+    sensor_msgs::PointCloud2Iterator<float> iter_x(pc_msg, "x");
+    sensor_msgs::PointCloud2Iterator<float> iter_y(pc_msg, "y");
+    sensor_msgs::PointCloud2Iterator<float> iter_z(pc_msg, "z");
+    for (const auto& pt : pc_points) {
+        *iter_x = pt.x;
+        *iter_y = pt.y;
+        *iter_z = pt.z;
+        ++iter_x;
+        ++iter_y;
+        ++iter_z;
+    }
+    pc_pub.publish(pc_msg);
 }
 
 void imageCallback(const sensor_msgs::ImageConstPtr& msg)
@@ -99,6 +128,7 @@ int main(int argc, char **argv)
     perspective_trans.loadConfig("package://ground_detector/config/perspective.yaml");
 
     map_pub = nh.advertise<nav_msgs::OccupancyGrid>("/local_map", 1);
+    pc_pub = nh.advertise<sensor_msgs::PointCloud2>("/local_map_pc", 1);
     ros::Subscriber sub = nh.subscribe("/camera/color/image_raw", 1, imageCallback);
     cv::namedWindow("Perspective Select");
     cv::setMouseCallback("Perspective Select", mouseCallback, NULL);
