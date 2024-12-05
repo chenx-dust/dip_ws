@@ -39,10 +39,14 @@ void publishMap(ros::Time stamp, const cv::Mat& road_mask, const cv::Mat& border
     map_msg.info.origin.orientation.w = 1;
     map_msg.data.resize(road_mask.cols * road_mask.rows);
 
+    cv::Mat border_mask_closed;
+    cv::Mat morph_kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3));
+    cv::morphologyEx(border_mask, border_mask_closed, cv::MORPH_CLOSE, morph_kernel);
+
     for (int i = 0; i < road_mask.rows; i++) {
         for (int j = 0; j < road_mask.cols; j++) {
             size_t index = i * road_mask.cols + j;
-            if (border_mask.at<uchar>(i, j) == 255) {
+            if (border_mask_closed.at<uchar>(i, j) == 255) {
                 map_msg.data[index] = 100;
             } else {
                 map_msg.data[index] = 255 - road_mask.at<uchar>(i, j);

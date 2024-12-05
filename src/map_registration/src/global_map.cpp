@@ -43,7 +43,7 @@ void GlobalMap::updateMap(const nav_msgs::OccupancyGrid& local_map, const geomet
         last_transform_.getBasis()[1][0], last_transform_.getBasis()[1][1],
             last_transform_.getOrigin().y() / config_.resolution);
 
-    std::cout << "last mat: " << last_registration_ << std::endl;
+    // std::cout << "last mat: " << last_registration_ << std::endl;
 
     // Apply the affine transformation to the local map
     cv::Mat transformed_road;
@@ -72,7 +72,7 @@ void GlobalMap::updateMap(const nav_msgs::OccupancyGrid& local_map, const geomet
         cv::Mat warped_border, warped_road;
         cv::Mat result = registration(border_, transformed_border);
 
-        std::cout << "new mat: " << result << std::endl;
+        // std::cout << "new mat: " << result << std::endl;
         // map->warp(transformed_border, warped_border);
         // map->warp(transformed_road, warped_road);
 
@@ -105,9 +105,15 @@ void GlobalMap::updateMap(const nav_msgs::OccupancyGrid& local_map, const geomet
         registration_show.setTo(cv::Scalar(0, 0, 255), transformed_border);
         cv::flip(registration_show, registration_show, 0);
         cv::imshow("registration_show", registration_show);
-        border_.setTo(cv::Scalar(0), warped_road);
+
+        cv::Mat eroded_road;
+        cv::Mat morph_kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3));
+        cv::erode(warped_road, eroded_road, morph_kernel);
+
+        border_.setTo(cv::Scalar(0), eroded_road);
         border_ += warped_border;
         road_ += warped_road;
+
 
         last_registration_ = result;
 

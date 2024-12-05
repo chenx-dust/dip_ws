@@ -15,12 +15,18 @@ cv::Mat registration(const cv::Mat& src, const cv::Mat& dst)
 
     auto filter = itk::ElastixRegistrationMethod<ImageType, ImageType>::New();
     auto parameter_object = elastix::ParameterObject::New();
-    parameter_object->AddParameterMap(elastix::ParameterObject::GetDefaultParameterMap("rigid"));
+    auto parameter_map = elastix::ParameterObject::GetDefaultParameterMap("rigid");
+    // parameter_map["MaximumNumberOfIterations"] = { "360" };
+    parameter_map["NumberOfResolutions"] = { "3" };
+    parameter_map["MovingImagePyramid"] = { "OpenCLMovingGenericImagePyramid" };
+    parameter_map["Resampler"] = { "OpenCLResampler" };
+    parameter_object->AddParameterMap(parameter_map);
+
     filter->SetParameterObject(parameter_object);
     filter->SetFixedImage(itk_src);
     filter->SetMovingImage(itk_dst);
-    filter->SetNumberOfThreads(8);
-    filter->UpdateLargestPossibleRegion();
+    filter->SetNumberOfThreads(16);
+    filter->Update();
 
     auto result_transform_parameters = filter->GetTransformParameterObject()->GetParameterMaps();
     auto transform = result_transform_parameters[0]["TransformParameters"];
