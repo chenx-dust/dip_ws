@@ -1,5 +1,7 @@
 #include "ground_detector/red_extract.hpp"
 
+using namespace ground_detector;
+
 RedDetection::RedDetection()
 {
     // 设置红色的初始低阈值和高阈值（BGR格式）

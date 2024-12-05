@@ -2,7 +2,7 @@
 
 #include <opencv2/opencv.hpp>
 
-
+namespace ground_detector {
 class PerspectiveTrans {
 public:
     void setNowPoint(const cv::Point2f& point);
@@ -38,4 +38,4 @@ private:
 
     PerspectiveConfig config;
 };
-
+}

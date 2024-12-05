@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<launch>
+  <!-- Define the bag_file argument with default empty string -->
+  <arg name="bag_file" default=""/>
+
+  <!-- Play rosbag -->
+  <node pkg="rosbag" type="play" name="player" output="screen" args="$(arg bag_file) --clock --quiet">
+  </node>
+
+  <!-- Include the slam.launch file -->
+  <include file="$(find dip_bring_up)/launch/slam.launch"/>
+
+</launch>

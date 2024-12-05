@@ -8,6 +8,8 @@
 #include <image_geometry/pinhole_camera_model.h>
 #include <nav_msgs/OccupancyGrid.h>
 
+using namespace ground_detector;
+
 RedDetection red_detection;
 PerspectiveTrans perspective_trans;
 std::shared_ptr<camera_info_manager::CameraInfoManager> camera_info;
@@ -31,8 +33,8 @@ void publishMap(ros::Time stamp, const cv::Mat& road_mask, const cv::Mat& border
     msg.info.resolution = 0.01;
     msg.info.width = road_mask.cols;
     msg.info.height = road_mask.rows;
-    msg.info.origin.position.x = -origin_point.y / 100;
-    msg.info.origin.position.y = -origin_point.x / 100;
+    msg.info.origin.position.x = -origin_point.y / 100.;
+    msg.info.origin.position.y = -origin_point.x / 100.;
     msg.info.origin.position.z = 0;
     msg.info.origin.orientation.x = 0;
     msg.info.origin.orientation.y = 0;

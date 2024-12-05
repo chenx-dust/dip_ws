@@ -1,11 +1,16 @@
 #include "ground_detector/road_extract.hpp"
 
-cv::Mat roadExtract(const cv::Mat& cv_image)
+cv::Mat ground_detector::roadExtract(const cv::Mat& cv_image)
 {
+    cv::Mat gauss_image;
+    cv::GaussianBlur(cv_image, gauss_image, cv::Size(7, 7), 1);
+    cv::Mat threshold_image;
+    cv::threshold(gauss_image, threshold_image, 127, 255, cv::THRESH_BINARY);
+
     cv::Point2i seed_point(cv_image.cols / 2, cv_image.rows - 1);
     cv::Mat mask = cv::Mat(cv_image.rows + 2, cv_image.cols + 2, CV_8UC1);
     mask.setTo(cv::Scalar(255));
-    cv_image.copyTo(mask(cv::Rect(1, 1, cv_image.cols, cv_image.rows)));
+    threshold_image.copyTo(mask(cv::Rect(1, 1, cv_image.cols, cv_image.rows)));
 
     cv::Mat road_mask = cv::Mat::zeros(cv_image.rows, cv_image.cols, CV_8UC1);
     cv::floodFill(road_mask, mask, seed_point, cv::Scalar(255));
@@ -16,7 +21,7 @@ cv::Mat roadExtract(const cv::Mat& cv_image)
     return road_mask;
 }
 
-cv::Mat borderExtract(const cv::Mat& cv_image, const cv::Mat& perspective_matrix, cv::Size origin_size)
+cv::Mat ground_detector::borderExtract(const cv::Mat& cv_image, const cv::Mat& perspective_matrix, cv::Size origin_size)
 {
     cv::Mat grad_x, grad_y;
     cv::Sobel(cv_image, grad_x, CV_16S, 1, 0);

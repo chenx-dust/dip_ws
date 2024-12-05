@@ -4,6 +4,8 @@
 #include <yaml-cpp/yaml.h>
 #include <string>
 
+using namespace ground_detector;
+
 void PerspectiveTrans::showPerspectiveSelect(const cv::Mat& cv_image)
 {
     cv::Mat image_show;

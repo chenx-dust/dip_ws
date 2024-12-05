@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<launch>
+    <!-- Launch the ground detector node -->
+    <node pkg="ground_detector" type="ground_detector" name="ground_detector" output="screen">
+        <!-- The node will automatically subscribe to /camera/color/image_raw -->
+        <!-- and publish to /local_map -->
+    </node>
+
+    <!-- Launch the map registration node -->
+    <node pkg="map_registration" type="map_registration" name="map_registration" output="screen">
+        <!-- The node will automatically subscribe to /local_map -->
+    </node>
+
+    <!-- Optional: Launch RViz for visualization -->
+    <node pkg="rviz" type="rviz" name="rviz" args="-d $(find dip_bring_up)/rviz/ground_detector.rviz" respawn="false"/>
+
+</launch>
