@@ -60,6 +60,7 @@ void GlobalMap::updateMap(const nav_msgs::OccupancyGrid& local_map, const geomet
     if (border_.empty()) {
         border_ = transformed_border;
         road_ = transformed_road;
+        cv::circle(road_, config_.origin, 80, cv::Scalar(255), -1);
     } else {
         // cv::Mat old_border_gauss, new_border_gauss;
         // cv::GaussianBlur(border_, old_border_gauss, cv::Size(7, 7), 1);

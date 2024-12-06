@@ -11,6 +11,11 @@
         <!-- The node will automatically subscribe to /local_map -->
     </node>
 
+    <!-- Launch the decision node -->
+    <node pkg="decision" type="decision" name="decision" output="screen">
+        <!-- The node will automatically subscribe to /local_map and /tf -->
+    </node>
+
     <!-- Optional: Launch RViz for visualization -->
     <node pkg="rviz" type="rviz" name="rviz" args="-d $(find dip_bring_up)/rviz/ground_detector.rviz" respawn="false"/>
 

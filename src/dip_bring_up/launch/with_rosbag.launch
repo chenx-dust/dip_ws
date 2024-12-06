@@ -6,7 +6,7 @@
   <param name="use_sim_time" value="true"/>
 
   <!-- Play rosbag -->
-  <node pkg="rosbag" type="play" name="player" output="screen" args="$(arg bag_file) --clock --quiet">
+  <node pkg="rosbag" type="play" name="player" output="screen" args="$(arg bag_file) --clock --quiet --rate=0.5">
   </node>
 
   <!-- Include the slam.launch file -->
