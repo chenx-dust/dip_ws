@@ -17,7 +17,7 @@ void PerspectiveTrans::showPerspectiveSelect(const cv::Mat& cv_image)
         image_show = paused_image_.clone();
     } else
         image_show = cv_image.clone();
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < config.target_points.size(); i++) {
         if (i == selecting_index_) {
             cv::circle(image_show, selected_points_[i], 5, cv::Scalar(0, 0, 255), -1);
         } else {

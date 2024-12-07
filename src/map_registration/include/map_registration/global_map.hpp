@@ -13,6 +13,8 @@ public:
         cv::Size size;
         float resolution;
         cv::Point2f origin;
+        float init_circle_radius;
+        float max_reg_move;
     };
 
     GlobalMap(const MapConfig& config);

@@ -60,7 +60,7 @@ void GlobalMap::updateMap(const nav_msgs::OccupancyGrid& local_map, const geomet
     if (border_.empty()) {
         border_ = transformed_border;
         road_ = transformed_road;
-        cv::circle(road_, config_.origin, 80, cv::Scalar(255), -1);
+        cv::circle(road_, config_.origin, config_.init_circle_radius, cv::Scalar(255), -1);
     } else {
         // cv::Mat old_border_gauss, new_border_gauss;
         // cv::GaussianBlur(border_, old_border_gauss, cv::Size(7, 7), 1);
@@ -71,7 +71,17 @@ void GlobalMap::updateMap(const nav_msgs::OccupancyGrid& local_map, const geomet
         // auto map = mapper.calculate(new_border_gauss, old_border_gauss);
 
         cv::Mat warped_border, warped_road;
-        cv::Mat result = registration(border_, transformed_border);
+        cv::Mat result;
+        try {
+            result = registration(border_, transformed_border);
+            cv::Vec2d translation(result.at<double>(0, 2), result.at<double>(1, 2));
+            if (cv::norm(translation) > config_.max_reg_move) {
+                throw std::runtime_error("Registration move too large");
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "Error in registration: " << e.what() << std::endl;
+            result = cv::Mat::eye(2, 3, CV_64FC1);
+        }
 
         // std::cout << "new mat: " << result << std::endl;
         // map->warp(transformed_border, warped_border);

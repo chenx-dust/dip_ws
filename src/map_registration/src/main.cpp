@@ -93,7 +93,9 @@ int main(int argc, char **argv) {
     {
         .size = cv::Size(nh.param<int>("width", 1000), nh.param<int>("height", 1000)),
         .resolution = nh.param<float>("resolution", 0.01),
-        .origin = cv::Point2f(nh.param<float>("origin_x", 500), nh.param<float>("origin_y", 200))
+        .origin = cv::Point2f(nh.param<float>("origin_x", 200), nh.param<float>("origin_y", 500)),
+        .init_circle_radius = nh.param<float>("init_circle_radius", 150),
+        .max_reg_move = nh.param<float>("max_reg_move", 100)
     };
     // Set config values here...
     global_map_ptr = std::make_shared<map_registration::GlobalMap>(config);
