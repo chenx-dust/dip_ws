@@ -55,7 +55,7 @@ int main(int argc, char **argv) {
         .turn_turn_distance = 150,
     });
 
-    goal_pub = nh.advertise<geometry_msgs::PoseStamped>("/goal_pose", 10);
+    goal_pub = nh.advertise<geometry_msgs::PoseStamped>("/move_base_simple/goal", 10);
     ros::Subscriber map_sub = nh.subscribe("/global_map", 10, map_callback);
     ros::Subscriber turn_direction_sub = nh.subscribe("/turn_direction", 10, turn_direction_callback);
     ros::spin();
