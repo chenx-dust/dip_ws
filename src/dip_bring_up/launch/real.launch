@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<launch>
+    <include file="$(find dip_bring_up)/launch/slam.launch" />
+
+    <!-- Launch realsense -->
+    <include file="$(find realsense2_camera)/launch/rs_camera.launch" />
+</launch>

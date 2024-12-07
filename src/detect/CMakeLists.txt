@@ -27,7 +27,9 @@ include_directories(
 
 include_directories(${OpenCV_INCLUDE_DIRS})
 
+set(CMAKE_BUILD_TYPE Debug)
 add_executable(detect_template src/detect_template.cpp)
+target_compile_options(detect_template PRIVATE -O0 -fno-omit-frame-pointer)
 target_link_libraries(detect_template  ${catkin_LIBRARIES} ${OpenCV_LIBS})
 
 install(TARGETS detect_template DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})

@@ -12,16 +12,19 @@
 using namespace cv;
 using namespace std;
 
-enum PillType
-{
+enum PillType {
     UNKNOWN = 0,
     BLUE = 1,
     GREEN = 2
 };
 
+constexpr int MAX_BLUE_COUNT = 10;
+constexpr int MAX_GREEN_COUNT = 10;
+constexpr int DIFF_THRESHOLD = 30;
+
 // 初始参数
 int threshold_value = 175;
-int min_area = 500;
+int min_area = 700;
 double min_aspect_ratio = 0.50;
 double max_aspect_ratio = 1.0;
 double max_angle_horizon = 10;
@@ -50,8 +53,9 @@ bool comparePairs(const pair<float, Rect> &a, const pair<float, Rect> &b)
 }
 
 // 非极大值抑制
-void nonMaxSuppression(vector<Rect> &boxes, vector<float> &scores, float overlapThresh)
+vector<Rect> nonMaxSuppression(const vector<Rect> &boxes, const vector<float> &scores, float overlapThresh)
 {
+    assert(boxes.size() == scores.size());
     vector<int> picked;
 
     // 按照得分从高到低排序
@@ -98,7 +102,7 @@ void nonMaxSuppression(vector<Rect> &boxes, vector<float> &scores, float overlap
         finalBoxes.push_back(boxes[idx]);
     }
 
-    boxes = finalBoxes;
+    return finalBoxes;
 }
 
 // 多尺度模板匹配函数
@@ -156,7 +160,7 @@ void multiScaleTemplateMatching(const Mat &img, const Mat &templ, vector<Rect> &
     }
 
     // 使用非极大值抑制去除重叠的匹配框
-    nonMaxSuppression(boxes, scores, overlapThresh); // 设置重叠阈值
+    boxes = nonMaxSuppression(boxes, scores, overlapThresh); // 设置重叠阈值
 
     // 如果匹配框多于指定数量，选择得分最高的匹配框
     if (boxes.size() > maxMatches)
@@ -185,33 +189,34 @@ void multiScaleTemplateMatching(const Mat &img, const Mat &templ, vector<Rect> &
 // 图像回调函数
 void imageCallback(const sensor_msgs::ImageConstPtr &msg, const Mat &templ_blue, const Mat &templ_green)
 {
-    cv_bridge::CvImagePtr cv_ptr;
+    cv_bridge::CvImageConstPtr cv_ptr;
     try
     {
-        cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
+        cv_ptr = cv_bridge::toCvShare(msg, sensor_msgs::image_encodings::BGR8);
     }
     catch (cv_bridge::Exception &e)
     {
         ROS_ERROR("Could not convert from '%s' to 'bgr8'.", msg->encoding.c_str());
         return;
     }
+    cv::Mat draw_image = cv_ptr->image.clone();
 
     // 转换为灰度图
     cv::Mat gray;
-    cv::cvtColor(cv_ptr->image, gray, cv::COLOR_BGR2GRAY);
+    cv::cvtColor(draw_image, gray, cv::COLOR_BGR2GRAY);
 
     // 应用二值化
     cv::Mat binary;
     cv::threshold(gray, binary, threshold_value, 255, cv::THRESH_BINARY);
 
-    std::vector<std::vector<cv::Point>> contours;
-    std::vector<cv::Vec4i> hierarchy;
-    cv::findContours(binary, contours, hierarchy, RETR_CCOMP, CHAIN_APPROX_SIMPLE);
-    for (int i = 0; i < contours.size(); i++)
-    {
-        if (hierarchy[i][3] != -1)
+    std::vector<std::vector<cv::Point>> contours0;
+    std::vector<cv::Vec4i> hierarchy0;
+    cv::findContours(binary, contours0, hierarchy0, RETR_CCOMP, CHAIN_APPROX_SIMPLE);
+    assert(contours0.size() == hierarchy0.size());
+    for (int i = 0; i < contours0.size(); i++) {
+        if (hierarchy0[i][3] != -1)
         {
-            drawContours(binary, contours, i, Scalar(255, 255, 255), -1);
+            drawContours(binary, contours0, i, Scalar(255, 255, 255), -1);
         }
     }
 
@@ -226,7 +231,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg, const Mat &templ_blue,
     binary = eroded;
 
     // 创建一个 3x3 的结构元素（kernel），通常是一个矩形或者圆形
-    cv::Mat element = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(3, 3));
+    cv::Mat element = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(7, 7));
     cv::erode(binary, binary, element, cv::Point(-1, -1), 3);
 
     // // 进行开运算：先腐蚀再膨胀
@@ -234,33 +239,33 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg, const Mat &templ_blue,
 
     cv::imshow("binary", binary);
     // 检测轮廓
+    std::vector<std::vector<cv::Point>> contours;
+    std::vector<cv::Vec4i> hierarchy;
     cv::findContours(binary, contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 
-    std::vector<cv::Rect> boxes_blue;  // 存储匹配的框
-    std::vector<float> scores_blue;    // 存储匹配的得分
-    std::vector<cv::Rect> boxes_green; // 存储匹配的框
-    std::vector<float> scores_green;   // 存储匹配的得分
+    int max_blue_count = 0;
+    int max_green_count = 0;
 
     cv::Rect rectangleROI; // 存储长方形的ROI区域
     // 筛选出近似长方形的轮廓并进行模板匹配
-    for (const auto &contour : contours)
-    {
+    for (const auto& contour : contours) {
+        std::vector<cv::Rect> boxes_blue; // 存储匹配的框
+        std::vector<float> scores_blue; // 存储匹配的得分
+        std::vector<cv::Rect> boxes_green; // 存储匹配的框
+        std::vector<float> scores_green; // 存储匹配的得分
         // 计算轮廓的近似多边形
         std::vector<cv::Point> approx;
         cv::approxPolyDP(contour, approx, cv::arcLength(contour, true) * 0.02, true);
 
         // 判断是否为长方形
-        if (approx.size() == 4 && cv::isContourConvex(approx))
-        {
+        if (approx.size() == 4 && cv::isContourConvex(approx)) {
             // 计算轮廓的面积
             double area = cv::contourArea(approx);
-            if (area > min_area) // 设置面积阈值
-            {
+            if (area > min_area) { // 设置面积阈值
                 // 计算长宽比
                 cv::Rect rect = cv::boundingRect(approx);
                 double aspectRatio = static_cast<double>(rect.width) / rect.height;
-                if (aspectRatio > min_aspect_ratio && aspectRatio < max_aspect_ratio) // 设置长宽比范围
-                {
+                if (aspectRatio > min_aspect_ratio && aspectRatio < max_aspect_ratio) { // 设置长宽比范围
                     // 计算长方形的角度（最小矩形的旋转角度）
                     cv::RotatedRect rotatedRect = cv::minAreaRect(approx);
                     double angle = rotatedRect.angle;
@@ -301,8 +306,8 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg, const Mat &templ_blue,
                         std_msgs::Int8 pill_type;
                         pill_type.data = UNKNOWN;
                         // 获取图像的尺寸
-                        int imageWidth = cv_ptr->image.cols;
-                        int imageHeight = cv_ptr->image.rows;
+                        int imageWidth = draw_image.cols;
+                        int imageHeight = draw_image.rows;
 
                         // 存储长方形的ROI区域
                         rectangleROI = cv::boundingRect(approx);
@@ -325,12 +330,12 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg, const Mat &templ_blue,
                         // 使用扩大的矩形作为新的ROI
                         rectangleROI = expandedRectangle;
 
-                        cv::rectangle(cv_ptr->image, rectangleROI, cv::Scalar(0, 255, 255), 2);
+                        cv::rectangle(draw_image, rectangleROI, cv::Scalar(0, 255, 255), 2);
                         // 提取白色长方形区域
-                        cv::Mat roi = cv_ptr->image(rectangleROI);
+                        cv::Mat roi = draw_image(rectangleROI);
                         // 进行模板匹配
-                        multiScaleTemplateMatching(roi, templ_blue, boxes_blue, scores_blue, 1.1, -9, 3, 0.8, 0.1, 6);
-                        multiScaleTemplateMatching(roi, templ_green, boxes_green, scores_green, 1.1, -9, 3, 0.8, 0.1, 8);
+                        multiScaleTemplateMatching(roi, templ_blue, boxes_blue, scores_blue, 1.1, -9, 3, 0.8, 0.1, MAX_BLUE_COUNT);
+                        multiScaleTemplateMatching(roi, templ_green, boxes_green, scores_green, 1.1, -9, 3, 0.8, 0.1, MAX_GREEN_COUNT);
 
                         if (!color_decision)
                         {
@@ -340,7 +345,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg, const Mat &templ_blue,
                             total_green_count += boxes_green.size();
                             // std::cout << "blue_n" << total_blue_count << std::endl;
                             // std::cout << "green_n" << total_green_count << std::endl;
-                            color_decision = abs(total_blue_count - total_green_count) > 15;
+                            color_decision = abs(total_blue_count - total_green_count) > DIFF_THRESHOLD;
                         }
                         // 判断数量差异
                         if (color_decision)
@@ -363,10 +368,10 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg, const Mat &templ_blue,
                                 // 绘制蓝色匹配框
                                 for (size_t i = 0; i < boxes_blue.size(); ++i)
                                 {
-                                    cv::rectangle(cv_ptr->image, boxes_blue[i], cv::Scalar(255, 0, 0), 2);
+                                    cv::rectangle(draw_image, boxes_blue[i], cv::Scalar(255, 0, 0), 2);
                                 }
                                 // std::cout << "蓝色个数：" << boxes_blue.size() << std::endl;
-                                pill_type.data = BLUE;
+                                max_blue_count = std::max(max_blue_count, static_cast<int>(boxes_blue.size()));
                             }
                             else
                             {
@@ -379,10 +384,10 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg, const Mat &templ_blue,
                                 // 绘制绿色匹配框
                                 for (size_t i = 0; i < boxes_green.size(); ++i)
                                 {
-                                    cv::rectangle(cv_ptr->image, boxes_green[i], cv::Scalar(0, 255, 0), 2);
+                                    cv::rectangle(draw_image, boxes_green[i], cv::Scalar(0, 255, 0), 2);
                                 }
                                 // std::cout << "绿色个数：" << boxes_green.size() << std::endl;
-                                pill_type.data = GREEN;
+                                max_green_count = std::max(max_green_count, static_cast<int>(boxes_green.size()));
                             }
                         }
                         else
@@ -411,10 +416,10 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg, const Mat &templ_blue,
                                 // 绘制蓝色匹配框
                                 for (size_t i = 0; i < boxes_blue.size(); ++i)
                                 {
-                                    cv::rectangle(cv_ptr->image, boxes_blue[i], cv::Scalar(255, 0, 0), 2);
+                                    cv::rectangle(draw_image, boxes_blue[i], cv::Scalar(255, 0, 0), 2);
                                 }
                                 // std::cout << "蓝色个数：" << boxes_blue.size() << std::endl;
-                                pill_type.data = BLUE;
+                                max_blue_count = std::max(max_blue_count, static_cast<int>(boxes_blue.size()));
                             }
                             else if (!scores_green.empty())
                             {
@@ -427,20 +432,37 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg, const Mat &templ_blue,
                                 // 绘制绿色匹配框
                                 for (size_t i = 0; i < boxes_green.size(); ++i)
                                 {
-                                    cv::rectangle(cv_ptr->image, boxes_green[i], cv::Scalar(0, 255, 0), 2);
+                                    cv::rectangle(draw_image, boxes_green[i], cv::Scalar(0, 255, 0), 2);
                                 }
                                 // std::cout << "绿色个数：" << boxes_green.size() << std::endl;
-                                pill_type.data = GREEN;
+                                max_green_count = std::max(max_green_count, static_cast<int>(boxes_green.size()));
                             }
                         }
-                        pill_pub.publish(pill_type);
                     }
                 }
             }
         }
     }
+    if (color_decision) {
+        PillType pill_type;
+        std_msgs::Int8 pill_type_msg;
+        if (is_blue)
+        {
+            // pill_pub.publish(BLUE);
+            pill_type = BLUE;
+            std::cout << "蓝色个数：" << max_blue_count << std::endl;
+        }
+        else
+        {
+            // pill_pub.publish(GREEN);
+            pill_type = GREEN;
+            std::cout << "绿色个数：" << max_green_count << std::endl;
+        }
+        pill_type_msg.data = pill_type;
+        pill_pub.publish(pill_type_msg);
+    }
 
-    cv::imshow("Detected Rectangles", cv_ptr->image);
+    cv::imshow("Detected Rectangles", draw_image);
     cv::waitKey(1); // 等待按键以刷新显示
 }
 

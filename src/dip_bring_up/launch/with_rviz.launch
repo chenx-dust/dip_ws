@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<launch>
+    <include file="$(find dip_bring_up)/launch/slam.launch" />
+
+    <node pkg="rviz" type="rviz" name="rviz" args="-d $(find dip_bring_up)/rviz/ground_detector.rviz" respawn="false"/>
+</launch>
