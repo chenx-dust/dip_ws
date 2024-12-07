@@ -95,7 +95,7 @@ int main(int argc, char **argv) {
         .resolution = nh.param<float>("resolution", 0.01),
         .origin = cv::Point2f(nh.param<float>("origin_x", 200), nh.param<float>("origin_y", 500)),
         .init_circle_radius = nh.param<float>("init_circle_radius", 150),
-        .max_reg_move = nh.param<float>("max_reg_move", 100)
+        .max_reg_move = nh.param<float>("max_reg_move", 80)
     };
     // Set config values here...
     global_map_ptr = std::make_shared<map_registration::GlobalMap>(config);
