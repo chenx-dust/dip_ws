@@ -8,9 +8,10 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   sensor_msgs
   std_msgs
+  resource_retriever
 )
 
-find_package(OpenCV 3.4.5 REQUIRED)
+find_package(OpenCV REQUIRED)
 
 catkin_package(
 #  INCLUDE_DIRS include
@@ -26,17 +27,11 @@ include_directories(
 
 include_directories(${OpenCV_INCLUDE_DIRS})
 
-add_executable(detect_hsv src/detect_hsv.cpp)
-target_link_libraries(detect_hsv  ${catkin_LIBRARIES} ${OpenCV_LIBS})
-
-
 add_executable(detect_template src/detect_template.cpp)
 target_link_libraries(detect_template  ${catkin_LIBRARIES} ${OpenCV_LIBS})
 
-add_executable(detect_template_kcf src/detect_template_kcf.cpp)
-target_link_libraries(detect_template_kcf  ${catkin_LIBRARIES} ${OpenCV_LIBS})
+install(TARGETS detect_template DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 
-add_executable(detect_template_kcf_mix src/detect_template_kcf_mix.cpp)
-target_link_libraries(detect_template_kcf_mix  ${catkin_LIBRARIES} ${OpenCV_LIBS})
-
-
+install(DIRECTORY resource
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+)

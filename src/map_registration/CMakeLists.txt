@@ -9,7 +9,6 @@ find_package(catkin REQUIRED COMPONENTS
   # image_transport
   camera_info_manager
   image_geometry
-  resource_retriever
   nav_msgs
   tf2
   tf2_geometry_msgs

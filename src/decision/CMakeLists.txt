@@ -36,7 +36,7 @@ include_directories(
 add_executable(decision
   src/main.cpp
   src/decision.cpp
-  src/s1_process.cpp
+  src/process.cpp
 )
 target_link_libraries(decision ${catkin_LIBRARIES} ${OpenCV_LIBS})
 

@@ -66,7 +66,7 @@ cv::Point2f Decision::find_border_infront(const cv::Mat& image, cv::Point bot_lo
     return end;
 }
 
-cv::Vec2d Decision::find_edge(const cv::Mat& border_map, double yaw)
+cv::Vec2d Decision::find_straight_edge(const cv::Mat& border_map, double yaw)
 {
     yaw += CV_PI / 2;
     if (yaw < 0)
@@ -101,7 +101,7 @@ cv::Vec2d Decision::find_edge(const cv::Mat& border_map, double yaw)
         pt2.y = cvRound(y0 - 1000 * (a));
         cv::line(show, pt1, pt2, cv::Scalar(0, 0, 255), 2);
 
-        std::cout << "theta: " << theta << " yaw: " << yaw << " diff: " << angle_diff(theta, yaw) << std::endl;
+        // std::cout << "theta: " << theta << " yaw: " << yaw << " diff: " << angle_diff(theta, yaw) << std::endl;
 
         // 去除不同方向的线
         if (abs(angle_diff(theta, yaw)) > config_.angle_threshold)
@@ -162,7 +162,7 @@ cv::Vec2d Decision::find_edge(const cv::Mat& border_map, double yaw)
 
     double rho = (left_rho + right_rho) / 2;
     double theta = (left_theta + right_theta) / 2;
-    std::cout << rho << " " << theta << std::endl;
+    // std::cout << rho << " " << theta << std::endl;
     a = cos(theta), b = sin(theta);
     // std::cout << "a " << a << " b " << b << std::endl;
     x0 = a * rho, y0 = b * rho;

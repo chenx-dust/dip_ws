@@ -6,9 +6,18 @@
 #include <vector>
 #include <algorithm>
 #include <numeric>
+#include <resource_retriever/retriever.h>
+#include <std_msgs/Int8.h>
 
 using namespace cv;
 using namespace std;
+
+enum PillType
+{
+    UNKNOWN = 0,
+    BLUE = 1,
+    GREEN = 2
+};
 
 // 初始参数
 int threshold_value = 175;
@@ -22,6 +31,8 @@ int total_blue_count = 0;     // 蓝色匹配框的累计数量
 int total_green_count = 0;    // 绿色匹配框的累计数量
 bool color_decision = false;
 bool is_blue = false;
+
+ros::Publisher pill_pub;
 
 // 计算向量的角度（弧度）
 double angleBetweenVectors(const cv::Point &p1, const cv::Point &p2)
@@ -98,7 +109,7 @@ void multiScaleTemplateMatching(const Mat &img, const Mat &templ, vector<Rect> &
     int img_height = img.rows;
     int templ_width = templ.cols;
     int templ_height = templ.rows;
-    std::cout << "img" << img_width << ", " << img_height << std::endl;
+    // std::cout << "img" << img_width << ", " << img_height << std::endl;
 
     // 计算最大缩放比例（确保模板不会超过图像尺寸）
     double maxScaleRatioWidth = static_cast<double>(img_width) / templ_width;
@@ -287,6 +298,8 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg, const Mat &templ_blue,
                     }
                     if (isRectangle)
                     {
+                        std_msgs::Int8 pill_type;
+                        pill_type.data = UNKNOWN;
                         // 获取图像的尺寸
                         int imageWidth = cv_ptr->image.cols;
                         int imageHeight = cv_ptr->image.rows;
@@ -325,14 +338,14 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg, const Mat &templ_blue,
                             // 累加每次识别到的数量
                             total_blue_count += boxes_blue.size();
                             total_green_count += boxes_green.size();
-                            std::cout << "blue_n" << total_blue_count << std::endl;
-                            std::cout << "green_n" << total_green_count << std::endl;
+                            // std::cout << "blue_n" << total_blue_count << std::endl;
+                            // std::cout << "green_n" << total_green_count << std::endl;
                             color_decision = abs(total_blue_count - total_green_count) > 15;
                         }
                         // 判断数量差异
                         if (color_decision)
                         {
-                            ROS_INFO("The color is confirmed!");
+                            ROS_INFO_ONCE("The color is confirmed!");
                             if (total_blue_count != 0)
                             {
                                 is_blue = total_blue_count > total_green_count;
@@ -352,7 +365,8 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg, const Mat &templ_blue,
                                 {
                                     cv::rectangle(cv_ptr->image, boxes_blue[i], cv::Scalar(255, 0, 0), 2);
                                 }
-                                std::cout << "蓝色个数：" << boxes_blue.size() << std::endl;
+                                // std::cout << "蓝色个数：" << boxes_blue.size() << std::endl;
+                                pill_type.data = BLUE;
                             }
                             else
                             {
@@ -367,7 +381,8 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg, const Mat &templ_blue,
                                 {
                                     cv::rectangle(cv_ptr->image, boxes_green[i], cv::Scalar(0, 255, 0), 2);
                                 }
-                                std::cout << "绿色个数：" << boxes_green.size() << std::endl;
+                                // std::cout << "绿色个数：" << boxes_green.size() << std::endl;
+                                pill_type.data = GREEN;
                             }
                         }
                         else
@@ -398,7 +413,8 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg, const Mat &templ_blue,
                                 {
                                     cv::rectangle(cv_ptr->image, boxes_blue[i], cv::Scalar(255, 0, 0), 2);
                                 }
-                                std::cout << "蓝色个数：" << boxes_blue.size() << std::endl;
+                                // std::cout << "蓝色个数：" << boxes_blue.size() << std::endl;
+                                pill_type.data = BLUE;
                             }
                             else if (!scores_green.empty())
                             {
@@ -413,9 +429,11 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg, const Mat &templ_blue,
                                 {
                                     cv::rectangle(cv_ptr->image, boxes_green[i], cv::Scalar(0, 255, 0), 2);
                                 }
-                                std::cout << "绿色个数：" << boxes_green.size() << std::endl;
+                                // std::cout << "绿色个数：" << boxes_green.size() << std::endl;
+                                pill_type.data = GREEN;
                             }
                         }
+                        pill_pub.publish(pill_type);
                     }
                 }
             }
@@ -432,13 +450,28 @@ int main(int argc, char **argv)
     ros::NodeHandle nh;
 
     // 加载模板图像
-    Mat templ_blue = imread("/home/lwy/dis_lwy_cxj_ws/src/detect/blue_template.jpeg", IMREAD_COLOR);
-    Mat templ_green = imread("/home/lwy/dis_lwy_cxj_ws/src/detect/green_template.jpeg", IMREAD_COLOR);
+    resource_retriever::Retriever retriever;
+    auto templ_blue_resource = retriever.get("package://detect/resource/blue_template.jpeg");
+    std::vector<uchar> buffer_blue(templ_blue_resource.data.get(), templ_blue_resource.data.get() + templ_blue_resource.size);
+    Mat templ_blue = imdecode(buffer_blue, IMREAD_COLOR);
+    if (templ_blue.empty())
+    {
+        ROS_ERROR("Failed to load blue template image");
+        return -1;
+    }
+    auto templ_green_resource = retriever.get("package://detect/resource/green_template.jpeg");
+    std::vector<uchar> buffer_green(templ_green_resource.data.get(), templ_green_resource.data.get() + templ_green_resource.size);
+    Mat templ_green = imdecode(buffer_green, IMREAD_COLOR);
+    if (templ_green.empty())
+    {
+        ROS_ERROR("Failed to load green template image");
+        return -1;
+    }
     cv::imshow("template_blue", templ_blue);
-    cv::waitKey(1);
     cv::imshow("template_green", templ_green);
     cv::waitKey(1);
     // 订阅图像话题
+    pill_pub = nh.advertise<std_msgs::Int8>("/turn_direction", 10);
     ros::Subscriber sub = nh.subscribe<sensor_msgs::Image>("/camera/color/image_raw", 10, boost::bind(imageCallback, _1, templ_blue, templ_green));
 
     ros::spin();
