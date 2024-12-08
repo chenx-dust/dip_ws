@@ -1,16 +1,17 @@
 <?xml version="1.0"?>
 <launch>
     <!-- Launch the ground detector node -->
-    <node pkg="ground_detector" type="ground_detector" name="ground_detector" output="screen" />
-    <node pkg="ground_detector" type="odom_frame_trans.py" name="odom_frame_trans" output="screen" />
+    <node pkg="ground_detector" type="ground_detector" name="ground_detector_node" output="screen" />
+    <node pkg="ground_detector" type="odom_frame_trans.py" name="odom_frame_trans_node" output="screen" />
 
     <!-- Launch the map registration node -->
-    <node pkg="map_registration" type="map_registration" name="map_registration" output="screen" />
+    <node pkg="map_registration" type="map_registration" name="map_registration_node" output="screen" />
 
     <!-- Launch the decision node -->
     <!-- <node pkg="decision" type="decision" name="decision" output="screen" /> -->
 
     <!-- Launch the detect node -->
-    <node pkg="pill_detect" type="pill_detect" name="pill_detect" output="screen" />
-
+    <node pkg="pill_detect" type="pill_detect" name="pill_detect_node" output="screen">
+        <rosparam command="load" file="$(find dip_bring_up)/config/pill_detect.yaml"/>
+    </node>
 </launch>

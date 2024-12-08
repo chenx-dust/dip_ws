@@ -78,7 +78,7 @@ void localMapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg) {
 }
 
 int main(int argc, char **argv) {
-    ros::init(argc, argv, "map_registration");
+    ros::init(argc, argv, "map_registration_node");
     ros::NodeHandle nh;
 
     // Initialize tf2 listener

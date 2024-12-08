@@ -41,7 +41,7 @@ void turn_direction_callback(const std_msgs::Int8ConstPtr &msg) {
 }
 
 int main(int argc, char **argv) {
-    ros::init(argc, argv, "decision");
+    ros::init(argc, argv, "decision_node");
     ros::NodeHandle nh;
 
     tf2_ros::TransformListener tf_listener(tf_buffer);

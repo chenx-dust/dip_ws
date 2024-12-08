@@ -9,7 +9,7 @@ def odom_callback(msg):
     odom_pub.publish(msg)
 
 def listener():
-    rospy.init_node('odom_listener', anonymous=True)
+    rospy.init_node('odom_frame_trans_node', anonymous=True)
     
     # 创建 Odometry 消息的订阅者
     rospy.Subscriber("/odom", Odometry, odom_callback)

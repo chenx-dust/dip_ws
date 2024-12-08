@@ -47,20 +47,20 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg, const Mat &templ_blue,
         ROS_ERROR("Could not convert from '%s' to 'bgr8'.", msg->encoding.c_str());
         return;
     }
-    cv::Mat draw_image = cv_ptr->image.clone();
-
-    auto pill_type_count = pill_detect_.detect_pill_type(draw_image);
+    auto pill_type_count = pill_detect_.detect_pill_type(cv_ptr->image);
 
     if (pill_type_count.first != PillDetect::PillType::UNKNOWN) {
         std_msgs::Int8 pill_type_msg;
         pill_type_msg.data = static_cast<int>(pill_type_count.first);
         pill_pub.publish(pill_type_msg);
     }
+
+    cv::waitKey(1);
 }
 
 int main(int argc, char **argv)
 {
-    ros::init(argc, argv, "template_matching_node");
+    ros::init(argc, argv, "pill_detect_node");
     ros::NodeHandle nh;
 
     // 加载模板图像
@@ -83,16 +83,6 @@ int main(int argc, char **argv)
     // cv::imshow("template_green", templ_green);
     // cv::waitKey(1);
     pill_detect_.set_template(templ_blue, templ_green);
-    // int threshold_value = 175;
-    // int min_area = 700;
-    // double min_aspect_ratio = 0.50;
-    // double max_aspect_ratio = 1.0;
-    // double max_angle_horizon = 10;
-    // double max_angle_diff = 10.0; // 允许的最大内角度偏差（接近直角）
-    // int pill_min_area = 10; // 药片最小面积阈值
-    // int total_blue_count = 0; // 蓝色匹配框的累计数量
-    // int total_green_count = 0; // 绿色匹配框的累计数量
-    // int diff_threshold = 30;
     pill_detect_.set_config(PillDetect::DetectConfig {
         .threshold_value = nh.param<int>("threshold_value", 175),
         .min_area = nh.param<int>("min_area", 700),
