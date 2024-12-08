@@ -31,8 +31,8 @@ private:
     cv::Mat border_;
     cv::Mat road_;
 
-    // cv::Mat last_registration_ = cv::Mat::eye(2, 3, CV_32F);
-    tf2::Transform last_transform_ = tf2::Transform::getIdentity();
+    cv::Mat last_registration_ = cv::Mat::eye(2, 3, CV_64F);
+    // tf2::Transform last_transform_ = tf2::Transform::getIdentity();
     int count_ = 0;
 };
 }

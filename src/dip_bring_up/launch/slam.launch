@@ -11,6 +11,6 @@
     <!-- <node pkg="decision" type="decision" name="decision" output="screen" /> -->
 
     <!-- Launch the detect node -->
-    <node pkg="detect" type="detect_template" name="template_matching_node" output="screen" />
+    <node pkg="pill_detect" type="pill_detect" name="pill_detect" output="screen" />
 
 </launch>

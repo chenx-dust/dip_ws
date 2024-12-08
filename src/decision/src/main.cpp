@@ -46,13 +46,13 @@ int main(int argc, char **argv) {
 
     tf2_ros::TransformListener tf_listener(tf_buffer);
     decision_.set_config({
-        .angle_threshold = CV_PI / 6,
-        .hough_threshold = 80,
-        .rho_threshold = 40,
-        .front_length = 100,
-        .goal_distance = 0.75,
-        .turn_straight_distance = 50,
-        .turn_turn_distance = 150,
+        .angle_threshold = nh.param<double>("angle_threshold", CV_PI / 6),
+        .hough_threshold = nh.param<double>("hough_threshold", 80),
+        .rho_threshold = nh.param<double>("rho_threshold", 40),
+        .front_length = nh.param<double>("front_length", 100),
+        .goal_distance = nh.param<double>("goal_distance", 0.75),
+        .turn_straight_distance = nh.param<double>("turn_straight_distance", 50),
+        .turn_turn_distance = nh.param<double>("turn_turn_distance", 150),
     });
 
     goal_pub = nh.advertise<geometry_msgs::PoseStamped>("/move_base_simple/goal", 10);

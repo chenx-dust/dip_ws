@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(detect)
+project(pill_detect)
 
 find_package(catkin REQUIRED COMPONENTS
   cv_bridge
@@ -23,16 +23,21 @@ catkin_package(
 include_directories(
 # include
   ${catkin_INCLUDE_DIRS}
+  ${PROJECT_SOURCE_DIR}/include
 )
 
 include_directories(${OpenCV_INCLUDE_DIRS})
 
-set(CMAKE_BUILD_TYPE Debug)
-add_executable(detect_template src/detect_template.cpp)
-target_compile_options(detect_template PRIVATE -O0 -fno-omit-frame-pointer)
-target_link_libraries(detect_template  ${catkin_LIBRARIES} ${OpenCV_LIBS})
+# set(CMAKE_BUILD_TYPE Debug)
+add_executable(pill_detect
+  src/main.cpp
+  src/match.cpp
+  src/pill_detect.cpp
+)
+# target_compile_options(detect_template PRIVATE -O0 -fno-omit-frame-pointer)
+target_link_libraries(pill_detect  ${catkin_LIBRARIES} ${OpenCV_LIBS})
 
-install(TARGETS detect_template DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+install(TARGETS pill_detect DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 
 install(DIRECTORY resource
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}

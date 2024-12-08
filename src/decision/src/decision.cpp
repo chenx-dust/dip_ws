@@ -84,10 +84,12 @@ state_reselect:
         case TurnDirection::LEFT:
             turn = cv::Point2d(-goal_x_axis.y, goal_x_axis.x);
             new_yaw = yaw + CV_PI / 2;
+            std::cout << "turn left" << std::endl;
             break;
         case TurnDirection::RIGHT:
             turn = cv::Point2d(goal_x_axis.y, -goal_x_axis.x);
             new_yaw = yaw - CV_PI / 2;
+            std::cout << "turn right" << std::endl;
             break;
         default:
             std::cout << "turn direction error" << std::endl;
