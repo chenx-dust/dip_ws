@@ -1,0 +1,22 @@
+img_topic: "/camera/color/image_raw"
+pill_topic: "/turn_direction"
+
+DetectTemplate:
+  threshold_value: 175
+  min_area: 700
+  min_aspect_ratio: 0.50
+  max_aspect_ratio: 1.0
+  max_angle_horizon: 10.0
+  max_angle_diff: 10.0 
+  single_scale: 1.1
+  scale_num_blue: [-5, 3]
+  scale_num_green: [-5, 3]
+  score_thres_blue: 0.8
+  score_thres_green: 0.8
+  iou_thres_blue: 0.1
+  iou_thres_green: 0.1
+  erode_kernel_size: 7
+  erode_iteration: 3 
+  open_kernel_size: 7 
+  open_iteration: 3
+  is_debug: true
