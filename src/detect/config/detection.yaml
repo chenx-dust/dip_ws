@@ -15,3 +15,8 @@ DetectTemplate:
   score_thres_green: 0.8
   iou_thres_blue: 0.1
   iou_thres_green: 0.1
+  erode_kernel_size: 7
+  erode_iteration: 3 
+  open_kernel_size: 7 
+  open_iteration: 3
+  is_debug: true

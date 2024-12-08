@@ -41,6 +41,11 @@ double score_thres_blue = 0.8;
 double score_thres_green = 0.8;
 double iou_thres_blue = 0.1;
 double iou_thres_green = 0.1;
+int erode_kernel_size = 7;
+int erode_iteration = 3;
+int open_kernel_size = 7;
+int open_iteration = 3;
+bool is_debug = false;
 
 ros::Publisher pill_pub;
 
@@ -229,23 +234,29 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg, const Mat &templ_blue,
     }
 
     // 这里使用一个宽度较大的水平矩形作为腐蚀的结构元素
-    Mat element_erode = getStructuringElement(MORPH_RECT, Size(1, 11));
+    Mat element_erode1 = getStructuringElement(MORPH_RECT, Size(1, 11));
 
     // 5. 腐蚀操作，去掉水平横杠
     Mat eroded;
-    cv::erode(binary, eroded, element_erode);
-    // cv::imshow("erode", eroded);
+    cv::erode(binary, eroded, element_erode1);
+    if (is_debug)
+    {
+       cv::imshow("erode1", eroded);
+    }
 
     binary = eroded;
 
-    // 创建一个 3x3 的结构元素（kernel），通常是一个矩形或者圆形
-    cv::Mat element = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(7, 7));
-    cv::erode(binary, binary, element, cv::Point(-1, -1), 3);
+    // 创建一个结构元素（kernel)
+    cv::Mat element_erode2 = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(erode_kernel_size, erode_kernel_size));
+    cv::erode(binary, binary, element_erode2, cv::Point(-1, -1), erode_iteration);
 
+    cv::Mat element_open = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(erode_kernel_size, erode_kernel_size));
     // // 进行开运算：先腐蚀再膨胀
-    cv::morphologyEx(binary, binary, cv::MORPH_OPEN, element);
-
-    cv::imshow("binary", binary);
+    cv::morphologyEx(binary, binary, cv::MORPH_OPEN, element_open, cv::Point(-1, -1), open_iteration);
+    if (is_debug)
+    {
+        cv::imshow("binary", binary);
+    }
     // 检测轮廓
     std::vector<std::vector<cv::Point>> contours;
     std::vector<cv::Vec4i> hierarchy;
@@ -488,6 +499,11 @@ int main(int argc, char **argv)
     nh.getParam("/detect_template/pill_topic", pill_topic);
     nh.getParam("/detect_template/DetectTemplate/scale_num_blue", scale_num_blue);
     nh.getParam("/detect_template/DetectTemplate/scale_num_green", scale_num_green);
+    nh.param<bool>("/detect_template/DetectTemplate/is_debug", is_debug, 0);
+    nh.param<int>("/detect_template/DetectTemplate/erode_kernel_size", erode_kernel_size, 7);
+    nh.param<int>("/detect_template/DetectTemplate/erode_iteration", erode_iteration, 3);
+    nh.param<int>("/detect_template/DetectTemplate/open_kernel_size", open_kernel_size, 7);
+    nh.param<int>("/detect_template/DetectTemplate/open_iteration", open_iteration, 3);
     nh.param<int>("/detect_template/DetectTemplate/threshold_value", threshold_value, 175);
     nh.param<int>("/detect_template/DetectTemplate/min_area", min_area, 700);
     nh.param<double>("/detect_template/DetectTemplate/min_aspect_ratio", min_aspect_ratio, 0.50);
