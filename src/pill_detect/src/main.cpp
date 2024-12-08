@@ -83,6 +83,9 @@ int main(int argc, char **argv)
     // cv::imshow("template_green", templ_green);
     // cv::waitKey(1);
     pill_detect_.set_template(templ_blue, templ_green);
+    std::vector<int> scale_num_blue, scale_num_green;
+    nh.getParam("scale_num_blue",scale_num_blue);
+    nh.getParam("scale_num_green",scale_num_green);
     pill_detect_.set_config(PillDetect::DetectConfig {
         .threshold_value = nh.param<int>("threshold_value", 175),
         .min_area = nh.param<int>("min_area", 700),
@@ -90,8 +93,19 @@ int main(int argc, char **argv)
         .max_aspect_ratio = nh.param<double>("max_aspect_ratio", 1.0),
         .max_angle_horizon = nh.param<double>("max_angle_horizon", 10),
         .max_angle_diff = nh.param<double>("max_angle_diff", 10.0),
+        .single_scale = nh.param<double>("single_scale", 1.1),
+        .score_thres_blue = nh.param<double>("score_thres_blue", 0.8),
+        .score_thres_green = nh.param<double>("score_thres_green", 0.8),
+        .iou_thres_blue = nh.param<double>("iou_thres_blue", 0.1),
+        .iou_thres_green = nh.param<double>("iou_thres_green", 0.1),
         .pill_min_area = nh.param<int>("pill_min_area", 10),
         .diff_threshold = nh.param<int>("diff_threshold", 30),
+        .erode_kernel_size = nh.param<int>("erode_kernel_size", 7),
+        .erode_iteration = nh.param<int>("erode_iteration", 3),
+        .open_kernel_size = nh.param<int>("open_kernel_size", 7),
+        .open_iteration = nh.param<int>("erode_iteration", 3),
+        .scale_num_blue = scale_num_blue,
+        .scale_num_green = scale_num_green,
     });
     // 订阅图像话题
     pill_pub = nh.advertise<std_msgs::Int8>("/turn_direction", 10);

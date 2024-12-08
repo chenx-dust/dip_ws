@@ -39,11 +39,12 @@ std::pair<PillDetect::PillType, int> PillDetect::detect_pill_type(const cv::Mat&
     binary = eroded;
 
     // 创建一个 3x3 的结构元素（kernel），通常是一个矩形或者圆形
-    cv::Mat element = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(7, 7));
-    cv::erode(binary, binary, element, cv::Point(-1, -1), 3);
+    cv::Mat element_erode1 = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(config_.erode_kernel_size, config_.erode_kernel_size));
+    cv::erode(binary, binary, element_erode1, cv::Point(-1, -1), config_.erode_iteration);
 
+    cv::Mat element_open = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(config_.open_kernel_size, config_.open_kernel_size));
     // // 进行开运算：先腐蚀再膨胀
-    cv::morphologyEx(binary, binary, cv::MORPH_OPEN, element);
+    cv::morphologyEx(binary, binary, cv::MORPH_OPEN, element_open);
 
     cv::imshow("binary", binary);
     // 检测轮廓
@@ -141,52 +142,12 @@ std::pair<PillDetect::PillType, int> PillDetect::detect_pill_type(const cv::Mat&
         // 提取白色长方形区域
         cv::Mat roi = draw_image(rectangleROI);
         // 进行模板匹配
-        multiScaleTemplateMatching(roi, templ_blue_, boxes_blue, scores_blue, 1.1, -9, 3, 0.8, 0.1, MAX_BLUE_COUNT);
-        multiScaleTemplateMatching(roi, templ_green_, boxes_green, scores_green, 1.1, -9, 3, 0.8, 0.1, MAX_GREEN_COUNT);
 
         if (!color_decision) {
             // 累加每次识别到的数量
-            total_blue_count_ += boxes_blue.size();
-            total_green_count_ += boxes_green.size();
-            // std::cout << "blue_n" << total_blue_count << std::endl;
-            // std::cout << "green_n" << total_green_count << std::endl;
-            color_decision = abs(total_blue_count_ - total_green_count_) > config_.diff_threshold;
-        }
-        // 判断数量差异
-        if (color_decision) {
-            // ROS_INFO_ONCE("The color is confirmed!");
-            if (total_blue_count_ != 0) {
-                is_blue = total_blue_count_ > total_green_count_;
-            }
-            total_blue_count_ = 0;
-            total_green_count_ = 0;
-            if (is_blue) {
-                // 如果蓝色模板的总数量较多，选择蓝色模板
-                for (size_t i = 0; i < boxes_blue.size(); ++i) {
-                    boxes_blue[i].x += rectangleROI.x;
-                    boxes_blue[i].y += rectangleROI.y;
-                }
-                // 绘制蓝色匹配框
-                for (size_t i = 0; i < boxes_blue.size(); ++i) {
-                    cv::rectangle(draw_image, boxes_blue[i], cv::Scalar(255, 0, 0), 2);
-                }
-                // std::cout << "蓝色个数：" << boxes_blue.size() << std::endl;
-                max_blue_count = std::max(max_blue_count, static_cast<int>(boxes_blue.size()));
-            } else {
-                // 如果绿色模板的总数量较多，选择绿色模板
-                for (size_t i = 0; i < boxes_green.size(); ++i) {
-                    boxes_green[i].x += rectangleROI.x;
-                    boxes_green[i].y += rectangleROI.y;
-                }
-                // 绘制绿色匹配框
-                for (size_t i = 0; i < boxes_green.size(); ++i) {
-                    cv::rectangle(draw_image, boxes_green[i], cv::Scalar(0, 255, 0), 2);
-                }
-                // std::cout << "绿色个数：" << boxes_green.size() << std::endl;
-                max_green_count = std::max(max_green_count, static_cast<int>(boxes_green.size()));
-            }
-        } else {
-            // 如果蓝色和绿色的总数差异不超过 15，则继续计算平均得分并选择得分较高的模板
+            multiScaleTemplateMatching(roi, templ_blue_, boxes_blue, scores_blue, config_.single_scale, config_.scale_num_blue[0], config_.scale_num_blue[1], config_.score_thres_blue, config_.iou_thres_blue, MAX_BLUE_COUNT);
+            multiScaleTemplateMatching(roi, templ_green_, boxes_green, scores_green, config_.single_scale, config_.scale_num_green[0], config_.scale_num_green[1], config_.score_thres_green, config_.iou_thres_green, MAX_GREEN_COUNT);
+            // 如果蓝色和绿色的总数差异不超过diff_threshold，则计算平均得分并选择得分较高的模板
             float avg_score_blue = 0.0;
             if (!scores_blue.empty()) {
                 avg_score_blue = std::accumulate(scores_blue.begin(), scores_blue.end(), 0.0f) / scores_blue.size();
@@ -199,6 +160,7 @@ std::pair<PillDetect::PillType, int> PillDetect::detect_pill_type(const cv::Mat&
 
             if (!scores_blue.empty() && (scores_green.empty() || avg_score_blue > avg_score_green)) {
                 // 选择蓝色模板
+                total_blue_count_ += boxes_blue.size();
                 for (size_t i = 0; i < boxes_blue.size(); ++i) {
                     boxes_blue[i].x += rectangleROI.x;
                     boxes_blue[i].y += rectangleROI.y;
@@ -211,6 +173,7 @@ std::pair<PillDetect::PillType, int> PillDetect::detect_pill_type(const cv::Mat&
                 max_blue_count = std::max(max_blue_count, static_cast<int>(boxes_blue.size()));
             } else if (!scores_green.empty()) {
                 // 选择绿色模板
+                total_green_count_ += boxes_green.size();
                 for (size_t i = 0; i < boxes_green.size(); ++i) {
                     boxes_green[i].x += rectangleROI.x;
                     boxes_green[i].y += rectangleROI.y;
@@ -222,7 +185,45 @@ std::pair<PillDetect::PillType, int> PillDetect::detect_pill_type(const cv::Mat&
                 // std::cout << "绿色个数：" << boxes_green.size() << std::endl;
                 max_green_count = std::max(max_green_count, static_cast<int>(boxes_green.size()));
             }
+            // std::cout << "blue_n" << total_blue_count << std::endl;
+            // std::cout << "green_n" << total_green_count << std::endl;
+            color_decision = abs(total_blue_count_ - total_green_count_) > config_.diff_threshold;
         }
+        else{
+            // ROS_INFO_ONCE("The color is confirmed!");
+            if (total_blue_count_ != 0) {
+                is_blue = total_blue_count_ > total_green_count_;
+            }
+            total_blue_count_ = 0;
+            total_green_count_ = 0;
+            if (is_blue) {
+                // 如果蓝色模板的总数量较多，选择蓝色模板
+                multiScaleTemplateMatching(roi, templ_blue_, boxes_blue, scores_blue, config_.single_scale, config_.scale_num_blue[0], config_.scale_num_blue[1], config_.score_thres_blue, config_.iou_thres_blue, MAX_BLUE_COUNT);
+                for (size_t i = 0; i < boxes_blue.size(); ++i) {
+                    boxes_blue[i].x += rectangleROI.x;
+                    boxes_blue[i].y += rectangleROI.y;
+                }
+                // 绘制蓝色匹配框
+                for (size_t i = 0; i < boxes_blue.size(); ++i) {
+                    cv::rectangle(draw_image, boxes_blue[i], cv::Scalar(255, 0, 0), 2);
+                }
+                // std::cout << "蓝色个数：" << boxes_blue.size() << std::endl;
+                max_blue_count = std::max(max_blue_count, static_cast<int>(boxes_blue.size()));
+            } else {
+                // 如果绿色模板的总数量较多，选择绿色模板
+                multiScaleTemplateMatching(roi, templ_green_, boxes_green, scores_green, config_.single_scale, config_.scale_num_green[0], config_.scale_num_green[1], config_.score_thres_green, config_.iou_thres_green, MAX_GREEN_COUNT);
+                for (size_t i = 0; i < boxes_green.size(); ++i) {
+                    boxes_green[i].x += rectangleROI.x;
+                    boxes_green[i].y += rectangleROI.y;
+                }
+                // 绘制绿色匹配框
+                for (size_t i = 0; i < boxes_green.size(); ++i) {
+                    cv::rectangle(draw_image, boxes_green[i], cv::Scalar(0, 255, 0), 2);
+                }
+                // std::cout << "绿色个数：" << boxes_green.size() << std::endl;
+                max_green_count = std::max(max_green_count, static_cast<int>(boxes_green.size()));
+            }
+        } 
     }
 
     PillType pill_type = PillType::UNKNOWN;

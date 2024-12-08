@@ -18,8 +18,19 @@ public:
         double max_aspect_ratio = 1.0;
         double max_angle_horizon = 10;
         double max_angle_diff = 10.0; // 允许的最大内角度偏差（接近直角）
+        double single_scale = 1.1;
+        double score_thres_blue = 0.8;
+        double score_thres_green = 0.8;
+        double iou_thres_blue = 0.1;
+        double iou_thres_green = 0.1;
         int pill_min_area = 10; // 药片最小面积阈值
         int diff_threshold = 30;
+        int erode_kernel_size = 7;
+        int erode_iteration = 3;
+        int open_kernel_size = 7;
+        int open_iteration = 3;
+        std::vector<int> scale_num_blue = {-5, 3};
+        std::vector<int> scale_num_green = {-5, 3};
     };
 
     enum class PillType {

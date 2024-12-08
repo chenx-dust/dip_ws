@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <launch>
     <node name="pill_detect" pkg="pill_detect" type="pill_detect" output="screen"> 
-        <rosparam command="load" file="$(find pill_detect)/config/detection.yaml"/>
+        <rosparam command="load" file="$(find dip_bring_up)/config/pill_detect.yaml"/>
     </node>
 </launch>
