@@ -30,7 +30,6 @@ double min_aspect_ratio = 0.50;
 double max_aspect_ratio = 1.0;
 double max_angle_horizon = 10;
 double max_angle_diff = 10.0; // 允许的最大内角度偏差（接近直角）
-int pill_min_area = 10;       // 药片最小面积阈值
 int total_blue_count = 0;     // 蓝色匹配框的累计数量
 int total_green_count = 0;    // 绿色匹配框的累计数量
 bool color_decision = false;
@@ -38,6 +37,10 @@ bool is_blue = false;
 double single_scale = 1.1;
 vector<int> scale_num_blue = {-5, 3};
 vector<int> scale_num_green = {-5, 3};
+double score_thres_blue = 0.8;
+double score_thres_green = 0.8;
+double iou_thres_blue = 0.1;
+double iou_thres_green = 0.1;
 
 ros::Publisher pill_pub;
 
@@ -194,10 +197,12 @@ void multiScaleTemplateMatching(const Mat &img, const Mat &templ, vector<Rect> &
 void imageCallback(const sensor_msgs::ImageConstPtr &msg, const Mat &templ_blue, const Mat &templ_green)
 {
     cv_bridge::CvImageConstPtr cv_ptr;
-    try{
+    try
+    {
         cv_ptr = cv_bridge::toCvShare(msg, sensor_msgs::image_encodings::BGR8);
     }
-    catch (cv_bridge::Exception &e){
+    catch (cv_bridge::Exception &e)
+    {
         ROS_ERROR("Could not convert from '%s' to 'bgr8'.", msg->encoding.c_str());
         return;
     }
@@ -215,8 +220,10 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg, const Mat &templ_blue,
     std::vector<cv::Vec4i> hierarchy0;
     cv::findContours(binary, contours0, hierarchy0, RETR_CCOMP, CHAIN_APPROX_SIMPLE);
     assert(contours0.size() == hierarchy0.size());
-    for (int i = 0; i < contours0.size(); i++){
-        if (hierarchy0[i][3] != -1){
+    for (int i = 0; i < contours0.size(); i++)
+    {
+        if (hierarchy0[i][3] != -1)
+        {
             drawContours(binary, contours0, i, Scalar(255, 255, 255), -1);
         }
     }
@@ -249,7 +256,8 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg, const Mat &templ_blue,
 
     cv::Rect rectangleROI; // 存储长方形的ROI区域
     // 筛选出近似长方形的轮廓并进行模板匹配
-    for (const auto &contour : contours){
+    for (const auto &contour : contours)
+    {
         std::vector<cv::Rect> boxes_blue;  // 存储匹配的框
         std::vector<float> scores_blue;    // 存储匹配的得分
         std::vector<cv::Rect> boxes_green; // 存储匹配的框
@@ -259,14 +267,17 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg, const Mat &templ_blue,
         cv::approxPolyDP(contour, approx, cv::arcLength(contour, true) * 0.02, true);
 
         // 判断是否为长方形
-        if (approx.size() == 4 && cv::isContourConvex(approx)){
+        if (approx.size() == 4 && cv::isContourConvex(approx))
+        {
             // 计算轮廓的面积
             double area = cv::contourArea(approx);
-            if (area > min_area){ // 设置面积阈值
+            if (area > min_area)
+            { // 设置面积阈值
                 // 计算长宽比
                 cv::Rect rect = cv::boundingRect(approx);
                 double aspectRatio = static_cast<double>(rect.width) / rect.height;
-                if (aspectRatio > min_aspect_ratio && aspectRatio < max_aspect_ratio){ // 设置长宽比范围
+                if (aspectRatio > min_aspect_ratio && aspectRatio < max_aspect_ratio)
+                { // 设置长宽比范围
                     // 计算长方形的角度（最小矩形的旋转角度）
                     cv::RotatedRect rotatedRect = cv::minAreaRect(approx);
                     double angle = rotatedRect.angle;
@@ -302,7 +313,8 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg, const Mat &templ_blue,
                             break;
                         }
                     }
-                    if (isRectangle){
+                    if (isRectangle)
+                    {
                         std_msgs::Int8 pill_type;
                         pill_type.data = UNKNOWN;
                         // 获取图像的尺寸
@@ -335,46 +347,55 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg, const Mat &templ_blue,
                         cv::Mat roi = draw_image(rectangleROI);
                         // 进行模板匹配
 
-                        if (!color_decision){
+                        if (!color_decision)
+                        {
 
-                            multiScaleTemplateMatching(roi, templ_green, boxes_green, scores_green, single_scale, scale_num_green[0], scale_num_green[1], 0.8, 0.1, MAX_GREEN_COUNT);
-                            multiScaleTemplateMatching(roi, templ_blue, boxes_blue, scores_blue, single_scale, scale_num_blue[0], scale_num_blue[1], 0.8, 0.1, MAX_BLUE_COUNT);
+                            multiScaleTemplateMatching(roi, templ_blue, boxes_blue, scores_blue, single_scale, scale_num_blue[0], scale_num_blue[1], score_thres_blue, iou_thres_blue, MAX_BLUE_COUNT);
+                            multiScaleTemplateMatching(roi, templ_green, boxes_green, scores_green, single_scale, scale_num_green[0], scale_num_green[1], score_thres_green, iou_thres_green, MAX_GREEN_COUNT);
                             // 如果蓝色和绿色的总数差异不超过 15，则继续计算平均得分并选择得分较高的模板
                             float avg_score_blue = 0.0;
-                            if (!scores_blue.empty()){
+                            if (!scores_blue.empty())
+                            {
                                 avg_score_blue = std::accumulate(scores_blue.begin(), scores_blue.end(), 0.0f) / scores_blue.size();
                             }
 
                             float avg_score_green = 0.0;
-                            if (!scores_green.empty()){
+                            if (!scores_green.empty())
+                            {
                                 avg_score_green = std::accumulate(scores_green.begin(), scores_green.end(), 0.0f) / scores_green.size();
                             }
 
-                            if (!scores_blue.empty() && (scores_green.empty() || avg_score_blue > avg_score_green)){
+                            if (!scores_blue.empty() && (scores_green.empty() || avg_score_blue > avg_score_green))
+                            {
                                 // 选择蓝色模板
                                 total_blue_count += boxes_blue.size();
                                 // 选择蓝色模板
-                                for (std::size_t i = 0; i < boxes_blue.size(); ++i){
+                                for (std::size_t i = 0; i < boxes_blue.size(); ++i)
+                                {
                                     boxes_blue[i].x += rectangleROI.x;
                                     boxes_blue[i].y += rectangleROI.y;
                                 }
                                 // 绘制蓝色匹配框
-                                for (std::size_t i = 0; i < boxes_blue.size(); ++i){
+                                for (std::size_t i = 0; i < boxes_blue.size(); ++i)
+                                {
                                     cv::rectangle(draw_image, boxes_blue[i], cv::Scalar(255, 0, 0), 2);
                                 }
                                 // std::cout << "蓝色个数：" << boxes_blue.size() << std::endl;
                                 max_blue_count = std::max(max_blue_count, static_cast<int>(boxes_blue.size()));
                             }
-                            else if (!scores_green.empty()){
+                            else if (!scores_green.empty())
+                            {
                                 // 选择绿色模板
                                 total_green_count += boxes_green.size();
                                 // 选择绿色模板
-                                for (std::size_t i = 0; i < boxes_green.size(); ++i){
+                                for (std::size_t i = 0; i < boxes_green.size(); ++i)
+                                {
                                     boxes_green[i].x += rectangleROI.x;
                                     boxes_green[i].y += rectangleROI.y;
                                 }
                                 // 绘制绿色匹配框
-                                for (std::size_t i = 0; i < boxes_green.size(); ++i){
+                                for (std::size_t i = 0; i < boxes_green.size(); ++i)
+                                {
                                     cv::rectangle(draw_image, boxes_green[i], cv::Scalar(0, 255, 0), 2);
                                 }
                                 // std::cout << "绿色个数：" << boxes_green.size() << std::endl;
@@ -385,36 +406,44 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg, const Mat &templ_blue,
                             // std::cout << "green_n" << total_green_count << std::endl;
                             color_decision = abs(total_blue_count - total_green_count) > DIFF_THRESHOLD;
                         }
-                        else{
+                        else
+                        {
                             ROS_INFO_ONCE("The color is confirmed!");
-                            if (total_blue_count != 0){
+                            if (total_blue_count != 0)
+                            {
                                 is_blue = total_blue_count > total_green_count;
                             }
                             total_blue_count = 0;
                             total_green_count = 0;
-                            if (is_blue){
+                            if (is_blue)
+                            {
                                 // 只识别蓝
-                                multiScaleTemplateMatching(roi, templ_blue, boxes_blue, scores_blue, single_scale, scale_num_blue[0], scale_num_blue[1], 0.8, 0.1, MAX_BLUE_COUNT);
-                                for (std::size_t i = 0; i < boxes_blue.size(); ++i){
+                                multiScaleTemplateMatching(roi, templ_blue, boxes_blue, scores_blue, single_scale, scale_num_blue[0], scale_num_blue[1], score_thres_blue, iou_thres_blue, MAX_BLUE_COUNT);
+                                for (std::size_t i = 0; i < boxes_blue.size(); ++i)
+                                {
                                     boxes_blue[i].x += rectangleROI.x;
                                     boxes_blue[i].y += rectangleROI.y;
                                 }
                                 // 绘制蓝色匹配框
-                                for (std::size_t i = 0; i < boxes_blue.size(); ++i){
+                                for (std::size_t i = 0; i < boxes_blue.size(); ++i)
+                                {
                                     cv::rectangle(draw_image, boxes_blue[i], cv::Scalar(255, 0, 0), 2);
                                 }
                                 // std::cout << "蓝色个数：" << boxes_blue.size() << std::endl;
                                 max_blue_count = std::max(max_blue_count, static_cast<int>(boxes_blue.size()));
                             }
-                            else{
+                            else
+                            {
                                 // 只识别绿
-                                multiScaleTemplateMatching(roi, templ_green, boxes_green, scores_green, single_scale, scale_num_green[0], scale_num_green[1], 0.8, 0.1, MAX_GREEN_COUNT);
-                                for (std::size_t i = 0; i < boxes_green.size(); ++i){
+                                multiScaleTemplateMatching(roi, templ_green, boxes_green, scores_green, single_scale, scale_num_green[0], scale_num_green[1], score_thres_green, iou_thres_green, MAX_GREEN_COUNT);
+                                for (std::size_t i = 0; i < boxes_green.size(); ++i)
+                                {
                                     boxes_green[i].x += rectangleROI.x;
                                     boxes_green[i].y += rectangleROI.y;
                                 }
                                 // 绘制绿色匹配框
-                                for (std::size_t i = 0; i < boxes_green.size(); ++i){
+                                for (std::size_t i = 0; i < boxes_green.size(); ++i)
+                                {
                                     cv::rectangle(draw_image, boxes_green[i], cv::Scalar(0, 255, 0), 2);
                                 }
                                 // std::cout << "绿色个数：" << boxes_green.size() << std::endl;
@@ -452,9 +481,24 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg, const Mat &templ_blue,
 
 int main(int argc, char **argv)
 {
-    ros::init(argc, argv, "template_matching_node");
+    ros::init(argc, argv, "detect_template_node");
     ros::NodeHandle nh;
-
+    string img_topic, pill_topic;
+    nh.getParam("/detect_template/img_topic", img_topic);
+    nh.getParam("/detect_template/pill_topic", pill_topic);
+    nh.getParam("/detect_template/DetectTemplate/scale_num_blue", scale_num_blue);
+    nh.getParam("/detect_template/DetectTemplate/scale_num_green", scale_num_green);
+    nh.param<int>("/detect_template/DetectTemplate/threshold_value", threshold_value, 175);
+    nh.param<int>("/detect_template/DetectTemplate/min_area", min_area, 700);
+    nh.param<double>("/detect_template/DetectTemplate/min_aspect_ratio", min_aspect_ratio, 0.50);
+    nh.param<double>("/detect_template/DetectTemplate/max_aspect_ratio", max_aspect_ratio, 1.0);
+    nh.param<double>("/detect_template/DetectTemplate/max_angle_horizon", max_angle_horizon, 10.0);
+    nh.param<double>("/detect_template/DetectTemplate/max_angle_diff", max_angle_diff, 10.0);
+    nh.param<double>("/detect_template/DetectTemplate/single_scale", single_scale, 1.1);
+    nh.param<double>("/detect_template/DetectTemplate/score_thres_blue", score_thres_blue, 0.8);
+    nh.param<double>("/detect_template/DetectTemplate/score_thres_green", score_thres_green, 0.8);
+    nh.param<double>("/detect_template/DetectTemplate/iou_thres_blue", iou_thres_blue, 0.1);
+    nh.param<double>("/detect_template/DetectTemplate/iou_thres_green", iou_thres_green, 0.1);
     // 加载模板图像
     resource_retriever::Retriever retriever;
     auto templ_blue_resource = retriever.get("package://detect/resource/blue_template.jpeg");
@@ -477,8 +521,8 @@ int main(int argc, char **argv)
     cv::imshow("template_green", templ_green);
     cv::waitKey(1);
     // 订阅图像话题
-    pill_pub = nh.advertise<std_msgs::Int8>("/turn_direction", 10);
-    ros::Subscriber sub = nh.subscribe<sensor_msgs::Image>("/camera/color/image_raw", 10, boost::bind(imageCallback, _1, templ_blue, templ_green));
+    pill_pub = nh.advertise<std_msgs::Int8>(pill_topic, 10);
+    ros::Subscriber sub = nh.subscribe<sensor_msgs::Image>(img_topic, 10, boost::bind(imageCallback, _1, templ_blue, templ_green));
 
     ros::spin();
     return 0;

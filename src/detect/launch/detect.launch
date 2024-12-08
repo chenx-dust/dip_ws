@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<launch>
+    <node name="detect_template" pkg="detect" type="detect_template" output="screen"> 
+        <rosparam command="load" file="$(find detect)/config/detection.yaml"/>
+    </node>
+</launch>
